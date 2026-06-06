@@ -13,8 +13,8 @@ COPY bitget-agent-demo/backend/package*.json ./backend/
 RUN cd backend && npm install
 COPY bitget-agent-demo/backend/ ./backend/
 
-# Demo-bot (shared dependency)
-COPY demo-bot/ ./demo-bot/
+# Demo-bot (shared dependency - 必须放在 /demo-bot 以匹配源码中的 ../../../demo-bot 引用)
+COPY demo-bot/ /demo-bot/
 
 EXPOSE 3001
 CMD ["node", "backend/server.js"]

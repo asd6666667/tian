@@ -3,6 +3,101 @@
   "recentTrades": [],
   "regimeHistory": [
     {
+      "time": "2026-06-06T06:40:46.631Z",
+      "symbol": "BTCUSDT",
+      "regime": "divergence"
+    },
+    {
+      "time": "2026-06-06T06:40:35.053Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:40:14.421Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:40:12.925Z",
+      "symbol": "BTCUSDT",
+      "regime": "divergence"
+    },
+    {
+      "time": "2026-06-06T06:39:52.965Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:39:45.432Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:39:34.567Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:39:24.037Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:39:22.402Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:39:02.712Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:38:58.634Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:38:56.553Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:38:56.181Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:38:33.708Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:38:31.214Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:38:21.350Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:37:59.500Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:37:58.781Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
+      "time": "2026-06-06T06:37:57.138Z",
+      "symbol": "BTCUSDT",
+      "regime": "ranging"
+    },
+    {
       "time": "2026-06-06T06:37:36.471Z",
       "symbol": "BTCUSDT",
       "regime": "ranging"
@@ -406,104 +501,9 @@
       "time": "2026-06-06T06:26:14.602Z",
       "symbol": "BTCUSDT",
       "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:26:13.459Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:26:04.704Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:26:04.004Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:25:46.565Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:25:45.643Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:25:27.202Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:25:22.183Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:25:16.561Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:54.992Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:52.107Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:46.887Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:45.283Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:20.168Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:19.446Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:12.245Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:24:10.413Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:23:50.972Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
-    },
-    {
-      "time": "2026-06-06T06:23:40.448Z",
-      "symbol": "BTCUSDT",
-      "regime": "exhaustion"
-    },
-    {
-      "time": "2026-06-06T06:23:39.345Z",
-      "symbol": "BTCUSDT",
-      "regime": "ranging"
     }
   ],
-  "updatedAt": "2026-06-06T06:37:36.471Z",
+  "updatedAt": "2026-06-06T06:40:46.631Z",
   "totalTrades": 0,
   "totalWins": 0
 }
