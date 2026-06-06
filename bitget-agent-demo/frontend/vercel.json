@@ -1,8 +1,6 @@
 {
-  "buildCommand": "npm run install:all && npm run build",
-  "outputDirectory": "frontend/dist",
-  "framework": null,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://YOUR_BACKEND.onrender.com/api/$1" }
-  ]
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install"
 }

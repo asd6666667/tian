@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: bitget-agent-demo
+    env: node
+    rootDir: bitget-agent-demo/backend
+    buildCommand: cd ../frontend && npm install && npm run build
+    startCommand: node server.js
+    healthCheckPath: /api/hub/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_LITE_MODEL
+        value: deepseek-v4-flash
+      - key: DEEPSEEK_PREMIUM_MODEL
+        value: deepseek-v4-flash
+      - key: DEEPSEEK_PERCEPTION_MODEL
+        value: deepseek-v4-flash
+      - key: DEEPSEEK_DECISION_MODEL
+        value: deepseek-v4-flash
+      - key: FRED_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: BITGET_API_KEY
+        sync: false
+      - key: BITGET_SECRET_KEY
+        sync: false
+      - key: BITGET_PASSPHRASE
+        sync: false
+      - key: DEEPSEEK_TIMEOUT_MS
+        value: "15000"
+      - key: NODE_USE_ENV_PROXY
+        value: "0"
+      - key: HTTP_PROXY
+        value: ""
+      - key: HTTPS_PROXY
+        value: ""
