@@ -1,6 +1,4 @@
-﻿import AccountHoldingsPanel from "./AccountHoldingsPanel";
-
-import { formatSimLogLine, formatOrderPrice, formatOrderQty, formatOrderSide } from "../utils/simActivity";
+﻿import { formatSimLogLine, formatOrderPrice, formatOrderQty, formatOrderSide } from "../utils/simActivity";
 
 
 
@@ -104,19 +102,6 @@ export default function SimActivityPanel({
 
       </div>
 
-
-
-      <AccountHoldingsPanel
-
-        compact
-
-        spotAssets={account?.spotAssets || []}
-
-        futuresPositions={account?.futuresPositions || []}
-
-        pendingOrders={orders}
-
-      />
 
 
 

@@ -161,18 +161,19 @@ export async function getSimAccount() {
   if (!isSimApiConfigured()) {
     return { configured: false, message: "请配置 demo-bot/.env 或 backend/.env" };
   }
+
   const assets = await getAssets();
+  const spotAssets = normalizeSpotAssets(assets);
   const usdt = findAsset(assets, "USDT");
   const btc = findAsset(assets, "BTC");
+
   let futuresPositions = [];
   try {
     futuresPositions = await getCurrentPositions("USDT-FUTURES");
-  } catch {
-    /* 无合约权限或暂无持仓 */
-  }
-  const spotAssets = normalizeSpotAssets(assets);
+  } catch { /* 无合约权限或暂无持仓 */ }
   let normalizedFutures = normalizeFuturesPositions(futuresPositions);
   normalizedFutures = await enrichFuturesMarkPrices(normalizedFutures);
+
   return {
     configured: true,
     paperTrading: true,

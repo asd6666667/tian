@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { formatSimLogLine, futuresSideLabel, futuresSideClass, formatFuturesPrice, formatLiquidationPrice, formatOrderSide, formatOrderQty, formatOrderPrice } from "../utils/simActivity";
-import AccountHoldingsPanel from "./AccountHoldingsPanel";
 import AgentLoopCard from "./AgentLoopCard";
 import PnLAnalysisPanel from "./PnLAnalysisPanel";
 import { api } from "../api";
@@ -99,7 +98,7 @@ export function AccountCard({ account }) {
         <p className="text-sm text-ink-muted">
           {account?.configured === false
             ? "模拟 API 未连接，无法读取资产。"
-            : "暂无现货持仓数据。"}
+            : "暂无持仓数据。"}
         </p>
         {account?.accountEquity != null && (
           <div className="mt-2 text-xs text-ink-faint">
@@ -111,11 +110,14 @@ export function AccountCard({ account }) {
   }
   return (
     <CardShell title={`账户权益 $${Number(account.accountEquity || 0).toFixed(2)}`}>
-      <AccountHoldingsPanel
-        compact
-        spotAssets={account.spotAssets}
-        futuresPositions={account.futuresPositions || []}
-      />
+      <div className="space-y-1 text-xs">
+        {account.spotAssets.map((a) => (
+          <div key={a.coin} className="flex justify-between border-b border-bitget-border/30 pb-1 last:border-0">
+            <span className="text-ink-body">{a.coin}</span>
+            <span className="font-mono text-ink-muted">{Number(a.available || 0).toFixed(6)}</span>
+          </div>
+        ))}
+      </div>
     </CardShell>
   );
 }

@@ -1,0 +1,32 @@
+{
+  "enabled": false,
+  "globalConfig": {
+    "defaultIntervalMs": 300000,
+    "minIntervalMs": 30000,
+    "maxIntervalMs": 3600000,
+    "adaptiveInterval": true
+  },
+  "stats": {
+    "totalTicks": 8,
+    "totalExecutions": 5,
+    "startedAt": "2026-06-05T15:04:25.318Z",
+    "lastTickAt": "2026-06-05T15:45:00.667Z"
+  },
+  "sessions": [
+    {
+      "id": "BTCUSDT_1780674276965",
+      "symbol": "BTCUSDT",
+      "strategy": {
+        "name": "突破趋势 · BTC",
+        "type": "breakout_trend",
+        "symbol": "BTCUSDT",
+        "summary": "BTC 突破趋势 · 单笔风险 1% · 盈亏比 2:1 · 200MA 过滤 · 20K 高低突破 · 量>1.5x · 1H"
+      },
+      "interval": 300000,
+      "lastTick": 1780674300667,
+      "status": "stopped",
+      "tickCount": 1,
+      "config": {}
+    }
+  ]
+}

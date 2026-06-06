@@ -40,8 +40,6 @@ import { isStrategyLeverageTweak, parseLeverageFromText } from "./intentParser.j
 import { isForceUserTrade, forceTradeSuffix } from "./forceTrade.js";
 
 const BIAS_LABEL = { bullish: "偏多", bearish: "偏空", neutral: "中性" };
-const DUST_USD = 1;
-
 /** 解析限价价格：@ 3000、限价73500、73500限价
  *  u/usdt 后缀表示金额而非价格，不要误当价格
  */
@@ -54,11 +52,6 @@ function detectLimitPrice(text) {
   m = text.match(/(\d+(?:\.\d+)?)\s*(?:限价|limit)/i);
   if (m) return Number(m[1]);
   return null;
-}
-
-function parseSpotTradeIntent(text) {
-  const orderType = /限价|limit/i.test(text) ? "limit" : "market";
-  return { orderType, price: detectLimitPrice(text) };
 }
 
 function detectQty(text) {
@@ -629,11 +622,6 @@ function isCloseAllPositions(text) {
   );
 }
 
-function isSellAll(text) {
-  if (isCloseAllPositions(text)) return false;
-  return /全部|所有|清仓|全卖|卖掉全部|卖出全部|清空现货|强制清仓|强制卖出全部/.test(text);
-}
-
 function isScanCommand(text) {
   const t = (text || "").trim();
   if (/信号扫描|感知\s*skill|全面分析|市场分析/.test(t)) return true;
@@ -682,13 +670,6 @@ export function detectChatIntent(text, previousStrategy) {
   }
   if (isCloseAllPositions(t)) {
     return { type: "close_all_positions" };
-  }
-  if (/卖|卖出|sell|清仓|卖掉|抛/.test(t)) {
-    if (isSellAll(t)) return { type: "sell_all", qty: detectQty(t) };
-    return { type: "sell", qty: detectQty(t), ...parseSpotTradeIntent(t) };
-  }
-  if (/买|买入|buy|开仓|加仓/.test(t) && !/怎么|如何|策略/.test(t) && !isStrategyDescription(t)) {
-    return { type: "buy", qty: detectQty(t), usdtAmount: detectUsdtAmount(t), ...parseSpotTradeIntent(t) };
   }
   if (/现价|价格|行情|多少钱/.test(t) && !/策略/.test(t)) return { type: "market" };
   if (/盈亏|pnl|收益分析|账户报告/.test(t) && !/止损|止盈|入场|开仓条件|风控规则/.test(t)) {
@@ -864,192 +845,6 @@ async function buildStrategyUpdateResult(text, previousStrategy) {
   };
 }
 
-async function executeSpotTrade({
-  side,
-  symbol,
-  qty,
-  usdtAmount,
-  strategy,
-  reason,
-  userCommand = false,
-  orderType = "market",
-  price = null,
-}) {
-  if (!isSimApiConfigured()) {
-    return { ok: false, error: "模拟 API 未连接，请先在上方配置 Bitget Demo Key" };
-  }
-
-  const sym = symbol || strategy?.symbol || "BTCUSDT";
-  const baseCoin = baseCoinFromSymbol(sym);
-
-  try {
-    const { assertDemoTradable } = await import("./demoSymbolGuard.js");
-    await assertDemoTradable(sym);
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-  const usePerception = strategy?.usePerception !== false;
-  /** 用户明确买卖/强制指令不受感知门禁；策略自动 tick 仍走门禁 */
-  const forceTrade = isForceUserTrade(reason);
-  const skipPerceptionGate = userCommand || forceTrade;
-
-  const [assets, live, perception] = await Promise.all([
-    getAssets(),
-    fetchBitgetSpotPrice(sym),
-    usePerception && !skipPerceptionGate ? gatherPerception(sym, { force: true }) : Promise.resolve(null),
-  ]);
-
-  const lastPrice = live.lastPrice;
-  const coinAsset = findAsset(assets, baseCoin);
-  const usdtAsset = findAsset(assets, "USDT");
-  const coinAvail = Number(coinAsset?.available || coinAsset?.balance || coinAsset?.equity || 0);
-  const usdtAvail = Number(usdtAsset?.available || 0);
-
-  let decision = { action: side, reason: reason || `用户指令${side === "buy" ? "买入" : "卖出"} ${baseCoin}` };
-  let perceptionSummary = null;
-
-  if (skipPerceptionGate) {
-    const actionLabel =
-      side === "buy" ? "买入" : side === "sell" ? "卖出" : side;
-    decision.reason = `${decision.reason} · 用户${forceTrade ? "强制" : ""}${actionLabel}指令强制执行`;
-  } else if (usePerception && perception) {
-    const gated = applyPerceptionGate(decision, perception, { usePerception: true });
-    decision = gated.decision;
-    perceptionSummary = gated.perceptionSummary;
-    if (decision.action === "hold") {
-      return {
-        ok: false,
-        blocked: true,
-        side,
-        symbol: sym,
-        reason: decision.reason,
-        perception,
-        perceptionSummary,
-      };
-    }
-  }
-
-  let orderQty = qty;
-  let qtyUnit = side === "buy" ? "quote" : "base";
-  let effectiveOrderType = orderType;
-  const userSpecifiedPrice = price != null;
-
-  // 用户说"限价买入"但没有指定价格（如"限价买入 ETH 50u"），降级为市价单
-  if (effectiveOrderType === "limit" && !userSpecifiedPrice) {
-    console.log(`[executeSpotTrade] 用户未指定限价，降级为市价单`);
-    effectiveOrderType = "market";
-  }
-
-  const isLimit = effectiveOrderType === "limit";
-  let limitPrice = price;
-
-  if (isLimit && !limitPrice) {
-    if (!lastPrice) {
-      return { ok: false, error: "无法获取现价，请稍后再试" };
-    }
-    limitPrice = defaultLimitPrice(lastPrice, side, sym);
-  }
-
-  if (isLimit && !limitPrice) {
-    return { ok: false, error: "限价单请指定价格，如「限价买入 ETH @ 3000 50u」" };
-  }
-
-  if (isLimit) {
-    const check = validateLimitPrice(limitPrice, lastPrice);
-    if (!check.ok) {
-      return { ok: false, error: formatLimitPriceError(check, sym, lastPrice) };
-    }
-  }
-
-  if (isLimit) {
-    qtyUnit = "base";
-    if (side === "sell") {
-      orderQty = qty ? Math.min(qty, coinAvail) : coinAvail;
-      if (orderQty <= 0) {
-        return { ok: false, error: `暂无 ${baseCoin} 可卖（可用 ${coinAvail}）` };
-      }
-    } else {
-      const spendUsdt = usdtAmount ?? detectUsdtAmount(reason || "");
-      if (qty) {
-        orderQty = qty;
-      } else if (spendUsdt && limitPrice > 0) {
-        orderQty = spendUsdt / limitPrice;
-      } else {
-        return {
-          ok: false,
-          error: "限价买入请指定数量或 USDT 金额，如「限价买入 50u ETH」",
-        };
-      }
-      const costUsdt = orderQty * limitPrice;
-      if (costUsdt > usdtAvail) {
-        return { ok: false, error: `USDT 可用不足（${usdtAvail.toFixed(2)}，需要约 ${costUsdt.toFixed(2)}）` };
-      }
-    }
-  } else if (side === "sell") {
-    orderQty = qty ? Math.min(qty, coinAvail) : coinAvail;
-    if (orderQty <= 0) {
-      return { ok: false, error: `暂无 ${baseCoin} 可卖（可用 ${coinAvail}）` };
-    }
-    qtyUnit = "base";
-  } else {
-    const spendUsdt = usdtAmount ?? detectUsdtAmount(reason || "");
-    if (spendUsdt != null && spendUsdt > 0) {
-      if (spendUsdt < 1) {
-        return { ok: false, error: "模拟盘最小买入约 1 USDT" };
-      }
-      if (spendUsdt > usdtAvail) {
-        return { ok: false, error: `USDT 可用不足（${usdtAvail.toFixed(2)}，需要 ${spendUsdt}）` };
-      }
-      orderQty = spendUsdt;
-      qtyUnit = "quote";
-    } else if (qty && lastPrice > 0) {
-      orderQty = qty * lastPrice;
-      qtyUnit = "quote";
-    } else {
-      // 未指定金额时默认 10 USDT
-      const spend = 10;
-      if (usdtAvail < spend) {
-        return { ok: false, error: `USDT 可用不足（${usdtAvail.toFixed(2)}，需要 ${spend}）` };
-      }
-      orderQty = spend;
-      qtyUnit = "quote";
-    }
-  }
-
-  try {
-    const { executeBitgetSpotOrder } = await import("./bitgetExecution.js");
-    const apiResult = await executeBitgetSpotOrder({
-      symbol: sym,
-      side,
-      qty: qtyUnit === "quote" ? orderQty : Number(orderQty),
-      orderType: effectiveOrderType,
-      price: isLimit ? limitPrice : undefined,
-      qtyUnit,
-      lastPrice,
-    });
-    const fillPrice = isLimit ? limitPrice : lastPrice;
-    const displayQty = qtyUnit === "quote" ? orderQty / (lastPrice || 1) : orderQty;
-    return {
-      ok: true,
-      side,
-      symbol: sym,
-      orderType: effectiveOrderType,
-      qty: displayQty,
-      usdtAmount: qtyUnit === "quote" ? orderQty : isLimit && side === "buy" ? orderQty * limitPrice : undefined,
-      price: fillPrice,
-      bitgetPrice: lastPrice,
-      order: apiResult,
-      perception,
-      perceptionSummary,
-      source: "bitget-api",
-      apiPath: apiResult.apiPath || apiResult.venue,
-      reason: `${decision.reason} · ${effectiveOrderType}${isLimit ? ` @ ${limitPrice}` : ""} · Bitget 现价 $${lastPrice.toFixed(2)} · orderId ${apiResult.orderId}`,
-    };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
-
 async function executeFuturesTrade({ text, symbol, intent, strategy }) {
   if (!isSimApiConfigured()) {
     return { ok: false, error: "模拟 API 未连接，请先在上方配置 Bitget Demo Key" };
@@ -1209,49 +1004,6 @@ async function executeFuturesTrade({ text, symbol, intent, strategy }) {
   }
 }
 
-async function executeSellAllAssets(strategy, text) {
-  if (!isSimApiConfigured()) {
-    return { ok: false, error: "模拟 API 未连接" };
-  }
-  const account = await getSimAccount();
-  const holdings = (account.spotAssets || []).filter(
-    (a) =>
-      a.coin !== "USDT" &&
-      (Number(a.available) > 0 || Number(a.usdValue) > DUST_USD)
-  );
-
-  if (!holdings.length) {
-    return { ok: false, error: "没有可卖的现货持仓（除 USDT 外）" };
-  }
-
-  const results = [];
-  for (const h of holdings) {
-    const sym = coinToSymbol(h.coin);
-    const qty = Number(h.available || 0);
-    if (qty <= 0 && Number(h.usdValue) <= DUST_USD) continue;
-    const r = await executeSpotTrade({
-      side: "sell",
-      symbol: sym,
-      qty: qty || undefined,
-      strategy,
-      reason: text || `清仓 ${h.coin}`,
-      userCommand: true,
-    });
-    results.push(r);
-  }
-
-  const ok = results.filter((r) => r.ok);
-  const blocked = results.filter((r) => r.blocked);
-  const failed = results.filter((r) => !r.ok && !r.blocked);
-
-  return {
-    ok: ok.length > 0,
-    kind: "multi_trade",
-    results,
-    content: `清仓完成：成功 ${ok.length} · 拦截 ${blocked.length} · 失败 ${failed.length}`,
-  };
-}
-
 async function executeCloseAllFutures() {
   const { closeAllFuturesPositions, getCurrentPositions, placeFuturesOrder } = await import(
     "../../../demo-bot/bitget-v3.js"
@@ -1273,19 +1025,42 @@ async function executeCloseAllFutures() {
   try {
     const data = await closeAllFuturesPositions();
     const list = Array.isArray(data?.list) ? data.list : [];
+    const results = open.map((p, i) => ({
+      ok: true,
+      category: "futures",
+      symbol: p.symbol,
+      side: "close",
+      posSide: p.holdSide,
+      qty: p.total || p.size,
+      order: list[i] || data,
+    }));
+    // 写入模拟交易日志
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      const pos = open[i];
+      try {
+        const { appendSimTradeLog } = await import("./simulationApi.js");
+        appendSimTradeLog({
+          ts: new Date().toISOString(),
+          source: "chat-agent",
+          category: "USDT-FUTURES",
+          symbol: r.symbol,
+          side: "close",
+          posSide: r.posSide,
+          qty: String(r.qty),
+          price: Number(pos.markPrice || 0),
+          orderType: "market",
+          order: r.order,
+          executed: true,
+          decision: { action: "close", reason: `批量平仓 ${r.symbol} ${r.posSide}` },
+        });
+      } catch { /* ignore log errors */ }
+    }
     return {
       ok: true,
       method: "bulk",
       count: open.length,
-      results: open.map((p, i) => ({
-        ok: true,
-        category: "futures",
-        symbol: p.symbol,
-        side: "close",
-        posSide: p.holdSide,
-        qty: p.total || p.size,
-        order: list[i] || data,
-      })),
+      results,
       closedSymbols: open.map((p) => p.symbol),
     };
   } catch (bulkErr) {
@@ -1310,6 +1085,24 @@ async function executeCloseAllFutures() {
           qty,
           order,
         });
+        // 写入模拟交易日志
+        try {
+          const { appendSimTradeLog } = await import("./simulationApi.js");
+          appendSimTradeLog({
+            ts: new Date().toISOString(),
+            source: "chat-agent",
+            category: "USDT-FUTURES",
+            symbol: p.symbol,
+            side: "close",
+            posSide: p.holdSide,
+            qty: String(qty),
+            price: Number(p.markPrice || 0),
+            orderType: "market",
+            order,
+            executed: true,
+            decision: { action: "close", reason: `逐笔平仓 ${p.symbol} ${p.holdSide}` },
+          });
+        } catch { /* ignore */ }
       } catch (err) {
         results.push({
           ok: false,
@@ -1359,7 +1152,6 @@ async function executeCloseAllPositions() {
     "✅ 合约全部平仓 · 指令已提交",
     `📈 ${futures.method === "bulk" ? "一键平仓" : "逐笔平仓"} · ${futures.count} 个持仓`,
     `汇总：成功 ${okN} · 失败 ${failN}`,
-    "ℹ️ 现货持仓不受影响",
   ];
 
   return {
@@ -1372,7 +1164,7 @@ async function executeCloseAllPositions() {
 
 async function resolveIntentSymbol(text, previousStrategy, intent) {
   const fallback = previousStrategy?.symbol || "BTCUSDT";
-  if (intent.type === "sell_all" || intent.type === "close_all_positions" || intent.type === "account" || intent.type === "symbols") {
+  if (intent.type === "close_all_positions" || intent.type === "account" || intent.type === "symbols") {
     return fallback;
   }
   if (intent.type === "scan") {
@@ -1409,15 +1201,13 @@ export async function handleChatMessage({ message, previousStrategy = null, forc
         kind: "help",
         content: "我可以帮你做这些事（支持全现货 USDT 交易对）：",
         capabilities: [
-          "📊 信号扫描 — 全 USDT 现货对，如「扫描 WLD」「扫描 PEPE」「扫描 BTC 信号」",
+          "📊 信号扫描 — 如「扫描 WLD」「扫描 PEPE」「扫描 BTC 信号」",
           "💰 查余额 — 「我的资产」",
           "📋 查挂单 — 「我的挂单」",
-          "🟢 买入 — 「买入 ETH」「强制买入 ETH」「限价买入 ETH 50u」（不受感知拦截）",
-          "🔴 卖出 — 「卖掉 ETH」「强制卖出 ETH」「卖出全部现货」（不受感知拦截）",
           "📈 合约开单 — 「开多 BTC」「强制开多 BTC」「市价单 1x杠杆 100u 多 BTC」",
           "🔻 合约平仓 — 「平多 BTC」「强制平多 BTC」「强制平仓 ETH」",
-          "💥 平掉全部仓位 — 「平掉全部仓位」「强制平掉全部仓位」（仅合约）",
-          "📈 限价单 — 「限价买入 ETH @ 3000」「限价 73000 开多 BTC 100u」",
+          "💥 平掉全部仓位 — 「平掉全部仓位」「强制平掉全部仓位」",
+          "📈 限价单 — 「限价 73000 开多 BTC 100u」",
           "❌ 撤单 — 「撤销全部挂单」",
           "📈 合约持仓 · ⚡ 执行策略 · 📉 盈亏分析 · 📜 模拟交易日志",
           "⚙️ 改策略 — 任意币种，如「SOL突破20日均线买入40%」（已连接模拟 API 时可启动模拟）",
@@ -1456,15 +1246,9 @@ export async function handleChatMessage({ message, previousStrategy = null, forc
       } else {
         account = await getSimAccount();
       }
-      const coins = (account.spotAssets || [])
-        .filter((a) => a.coin !== "USDT" && Number(a.available) > 0)
-        .map((a) => a.coin)
-        .join("、");
       return {
         kind: "account",
-        content: coins
-          ? `现货持仓：${coins}。可在对话中说「卖掉 ETH」或「卖出全部现货」。`
-          : "这是你模拟盘的现货/合约资产：",
+        content: "这是你模拟盘的账户资产：",
         account,
       };
     }
@@ -1538,18 +1322,6 @@ export async function handleChatMessage({ message, previousStrategy = null, forc
       };
     }
 
-    case "sell_all": {
-      const batch = await executeSellAllAssets(previousStrategy, text);
-      if (!batch.ok && !batch.results?.length) {
-        return { kind: "error", content: batch.error || "清仓失败" };
-      }
-      return {
-        kind: "multi_trade",
-        content: batch.content,
-        trades: batch.results,
-      };
-    }
-
     case "futures_trade": {
       const sym = symbol;
       const result = await executeFuturesTrade({
@@ -1567,66 +1339,6 @@ export async function handleChatMessage({ message, previousStrategy = null, forc
         kind: "trade",
         content: `✅ 合约${typeLabel}${dir} ${baseCoinFromSymbol(sym)} · ${Number(result.qty).toFixed(6)} @ $${Number(result.price).toFixed(2)}${result.leverage && result.side !== "close" ? ` · ${result.leverage}x` : ""}`,
         trade: result,
-      };
-    }
-
-    case "buy":
-    case "sell": {
-      const sym = symbol;
-      const result = await executeSpotTrade({
-        side: intent.type,
-        symbol: sym,
-        qty: intent.qty,
-        usdtAmount: intent.usdtAmount,
-        strategy: previousStrategy,
-        reason: text,
-        userCommand: true,
-        orderType: intent.orderType || "market",
-        price: intent.price ?? null,
-      });
-      if (!result.ok) {
-        return {
-          kind: result.blocked ? "trade_blocked" : "error",
-          content: result.reason || result.error,
-          trade: result,
-          perception: result.perception,
-        };
-      }
-      const qtyLabel = result.usdtAmount
-        ? `${Number(result.usdtAmount).toFixed(2)} USDT`
-        : `${formatOrderQty(result.qty)} ${baseCoinFromSymbol(sym)}`;
-      const typeLabel = result.orderType === "limit" ? "限价" : "市价";
-      const pendingHint =
-        result.orderType === "limit"
-          ? " · 已挂入 Bitget 委托簿，可说「我的挂单」查看"
-          : "";
-
-      // 记录现货交易日志
-      try {
-        const { appendSimTradeLog } = await import("./simulationApi.js");
-        const logQty = result.usdtAmount
-          ? `${result.usdtAmount} USDT`
-          : String(result.qty);
-        appendSimTradeLog({
-          ts: new Date().toISOString(),
-          source: "chat-agent",
-          category: "SPOT",
-          symbol: sym,
-          side: intent.type,
-          qty: logQty,
-          price: result.price,
-          orderType: result.orderType,
-          order: result.order,
-          executed: true,
-          decision: { action: intent.type, reason: text },
-        });
-      } catch { /* ignore log errors */ }
-
-      return {
-        kind: "trade",
-        content: `✅ ${typeLabel}${intent.type === "buy" ? "买入" : "卖出"} ${baseCoinFromSymbol(sym)} · ${qtyLabel} @ $${result.price?.toFixed(2) || "—"}${pendingHint}`,
-        trade: { ...result, pending: result.orderType === "limit" },
-        perception: result.perception,
       };
     }
 
@@ -1804,11 +1516,10 @@ export async function handleChatMessage({ message, previousStrategy = null, forc
       if (layer.action === "help") {
         return {
           kind: "help",
-          content: layer.content || "我可以帮你做这些事（支持全现货 USDT 交易对）：",
+          content: layer.content || "我可以帮你做这些事：",
           capabilities: [
-            "📊 信号扫描 — 全 USDT 现货对，如「扫描 WLD」「扫描 PEPE」",
+            "📊 信号扫描 — 如「扫描 WLD」「扫描 PEPE」",
             "💰 查余额 — 「我的资产」",
-            "🟢 买入 / 🔴 卖出 — 市价或限价",
             "⚙️ 描述策略 — 自然语言写入参数",
             "🧠 自主生成策略 — 「生成 BTC 策略」「帮我设计 WLD 策略」",
             "▶️ 启动策略 — 每 3 秒感知→决策→执行",

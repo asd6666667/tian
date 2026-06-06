@@ -1,5 +1,4 @@
-﻿import AccountHoldingsPanel from "./AccountHoldingsPanel";
-import AgentLoopCard from "./AgentLoopCard";
+﻿import AgentLoopCard from "./AgentLoopCard";
 import RunningStrategiesPanel from "./RunningStrategiesPanel";
 import { strategyRunId } from "../utils/strategyRun";
 import { formatOrderPrice, formatOrderQty, formatOrderSide } from "../utils/simActivity";
@@ -283,22 +282,6 @@ export default function PaperTradingPanel({
       </div>
 
 
-
-      {(spotAssets.length > 0 || futuresPositions.length > 0 || session.simApi) && (
-
-        <AccountHoldingsPanel
-
-          compact
-
-          spotAssets={spotAssets}
-
-          futuresPositions={futuresPositions}
-
-          pendingOrders={openOrders}
-
-        />
-
-      )}
 
 
 

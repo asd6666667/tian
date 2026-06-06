@@ -4,7 +4,6 @@ import Header from "./components/Header";
 import StrategyChat from "./components/StrategyChat";
 import SimApiConfigPanel from "./components/SimApiConfigPanel";
 import ConnectionBanner from "./components/ConnectionBanner";
-import AccountHoldingsPanel from "./components/AccountHoldingsPanel";
 import { normalizeSymbol } from "./utils/symbols";
 import { simLogToPanelEntry } from "./utils/simActivity";
 import {
@@ -637,6 +636,7 @@ export default function App() {
             if (t.symbol) tradeSyms.push(t.symbol);
           }
         }
+        // 立即刷新（后端本地账本已同步）
         await refreshSimActivity(tradeSyms.length ? tradeSyms : [data.strategy?.symbol || strategy?.symbol]);
       }
     } catch (e) {
@@ -688,16 +688,6 @@ export default function App() {
         <div className="mb-4">
           <SimApiConfigPanel simStatus={simStatus} onAuthChange={refreshSimAuth} />
         </div>
-
-        {simStatus?.configured && paperSession?.holdings?.spot && (
-          <div className="mb-4">
-            <AccountHoldingsPanel
-              spotAssets={paperSession.holdings.spot}
-              futuresPositions={paperSession.holdings.futures || []}
-              compact
-            />
-          </div>
-        )}
 
         <StrategyChat
           history={chatHistory}
