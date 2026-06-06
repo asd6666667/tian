@@ -1,0 +1,8 @@
+node_modules
+.git
+agent_hub
+.vercel
+bitget-agent-demo/frontend/dist
+bitget-agent-demo/backend/node_modules
+*.log
+.env
