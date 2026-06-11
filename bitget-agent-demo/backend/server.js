@@ -760,6 +760,27 @@ app.post("/api/getagent/run", express.json(), async (req, res) => {
   }
 });
 
+// GetAgent Cloud 查询回测结果代理
+app.get("/api/getagent/run", express.json(), async (req, res) => {
+  try {
+    const accessKey = req.headers["access-key"];
+    const runId = req.query.run_id;
+    if (!accessKey || !runId) {
+      return res.status(400).json({ error: "Missing accessKey header or run_id query" });
+    }
+    const response = await fetch(`https://api.bitget.com/api/v1/playbook/run?run_id=${runId}`, {
+      method: "GET",
+      headers: { "ACCESS-KEY": accessKey },
+    });
+    const text = await response.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = text; }
+    res.status(response.status).json({ status: response.status, data: parsed });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // 生产环境托管前端静态文件
 const frontendDist = path.join(__dirname, "../frontend/dist");
 app.use(express.static(frontendDist));
