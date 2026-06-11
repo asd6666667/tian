@@ -712,6 +712,58 @@ app.post("/api/agent/memory/reset", async (_req, res) => {
   }
 });
 
+// GetAgent Cloud 上传代理（本地无法直连 api.bitget.com 时经 Railway 中转）
+import { writeFileSync, unlinkSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+
+app.post("/api/getagent/upload", express.json({ limit: "20mb" }), async (req, res) => {
+  try {
+    const { accessKey, fileBase64 } = req.body;
+    if (!accessKey || !fileBase64) {
+      return res.status(400).json({ error: "Missing accessKey or fileBase64" });
+    }
+    const buffer = Buffer.from(fileBase64, "base64");
+    const form = new FormData();
+    const blob = new Blob([buffer], { type: "application/gzip" });
+    form.set("package", blob, "gold-dip-buy.tar.gz");
+    const response = await fetch("https://api.bitget.com/api/v1/playbook/upload", {
+      method: "POST",
+      headers: { "ACCESS-KEY": accessKey },
+      body: form,
+    });
+    // Drain body
+    const text = await response.text();
+    // Clean up
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = text; }
+    res.status(response.status).json({ status: response.status, data: parsed });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GetAgent Cloud 运行回测代理
+app.post("/api/getagent/run", express.json(), async (req, res) => {
+  try {
+    const { accessKey, versionId } = req.body;
+    if (!accessKey || !versionId) {
+      return res.status(400).json({ error: "Missing accessKey or versionId" });
+    }
+    const response = await fetch("https://api.bitget.com/api/v1/playbook/run", {
+      method: "POST",
+      headers: { "ACCESS-KEY": accessKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ version_id: versionId }),
+    });
+    const text = await response.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = text; }
+    res.status(response.status).json({ status: response.status, data: parsed });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // 生产环境托管前端静态文件
 const frontendDist = path.join(__dirname, "../frontend/dist");
 app.use(express.static(frontendDist));
