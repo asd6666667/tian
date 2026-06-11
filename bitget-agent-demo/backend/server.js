@@ -713,10 +713,6 @@ app.post("/api/agent/memory/reset", async (_req, res) => {
 });
 
 // GetAgent Cloud 上传代理（本地无法直连 api.bitget.com 时经 Railway 中转）
-import { writeFileSync, unlinkSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
-
 app.post("/api/getagent/upload", express.json({ limit: "20mb" }), async (req, res) => {
   try {
     const { accessKey, fileBase64 } = req.body;
